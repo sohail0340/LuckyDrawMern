@@ -21,7 +21,7 @@ async function seedDemoDraw() {
       prizeValuePkr: 3500000,
       tokenPricePkr: 100,
       tokenLimit: 100000,
-      imageUrl: "/api/uploads/draw_1777746156784_fm7kka.jfif",
+      imageUrl: "/assets/draw_1777984395703_pqf7ry.png",
       status: "active",
       badges: "verified,featured",
     });
