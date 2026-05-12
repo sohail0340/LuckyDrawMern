@@ -133,7 +133,7 @@ function DrawCard({
   };
 
   return (
-    <div className="group bg-[#111118] border border-white/8 rounded-3xl p-6 hover:border-[#FFD700]/40 transition-all duration-300 hover:shadow-[0_0_30px_rgba(255,215,0,0.08)] flex flex-col relative overflow-hidden">
+    <div className="group bg-[#111118] border border-white/8 rounded-3xl p-6 hover:border-[#FFD700]/40 transition-all duration-300 hover:shadow-[0_0_30px_rgba(255,215,0,0.08)] flex flex-col relative overflow-hidden h-full">
       {/* Admin actions overlay — top right */}
       {(onEdit || onViewParticipants || onDelete || onPickWinner) && (
         <div className="absolute top-3 right-3 flex gap-1.5 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -1223,10 +1223,10 @@ export default function AdminDraws() {
 
         {/* Card grid view */}
         {!loading && filtered.length > 0 && view === "cards" && (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 auto-rows-fr">
             <AnimatePresence mode="popLayout">
               {filtered.map((d, i) => (
-                <motion.div key={d.id} layout initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} transition={{ delay: Math.min(i, 5) * 0.05 }}>
+                <motion.div key={d.id} layout initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} transition={{ delay: Math.min(i, 5) * 0.05 }} className="h-full">
                   <DrawCard
                     draw={d}
                     onEdit={() => openEdit(d)}

@@ -3,13 +3,13 @@ import { Coins, Clock, Loader2, RotateCcw, Lock } from "lucide-react";
 import { spinApi, type ApiSpinStatus } from "@/lib/api";
 
 const SLICES = [
-  { label: "1 Token",  tokens: 1, fill: "#B8860B", accent: "#FFD700", text: "#000" },
   { label: "Try Again", tokens: 0, fill: "#0f0f1a", accent: "#1e1e3a", text: "#6b7280" },
-  { label: "2 Tokens", tokens: 2, fill: "#FFD700", accent: "#FFE680", text: "#000" },
+  { label: "4 Tokens", tokens: 4, fill: "#FFD700", accent: "#FFE680", text: "#000" },
+  { label: "Try Again", tokens: 0, fill: "#0f0f1a", accent: "#1e1e3a", text: "#6b7280" },
   { label: "Try Again", tokens: 0, fill: "#0a0a14", accent: "#161628", text: "#6b7280" },
-  { label: "1 Token",  tokens: 1, fill: "#B8860B", accent: "#FFD700", text: "#000" },
+  { label: "5 Tokens", tokens: 5, fill: "#FFD700", accent: "#FFE680", text: "#000" },
   { label: "Try Again", tokens: 0, fill: "#0f0f1a", accent: "#1e1e3a", text: "#6b7280" },
-  { label: "1 Token",  tokens: 1, fill: "#B8860B", accent: "#FFD700", text: "#000" },
+  { label: "3 Tokens", tokens: 3, fill: "#B8860B", accent: "#FFD700", text: "#000" },
   { label: "Try Again", tokens: 0, fill: "#0a0a14", accent: "#161628", text: "#6b7280" },
 ];
 
@@ -230,7 +230,7 @@ export default function SpinWheel({ onTokensUpdated }: { onTokensUpdated?: (newT
                     <g key={i}>
                       <path d={slicePath(i)} fill={s.fill} stroke="#FFD700" strokeWidth="1.5" opacity="0.95" />
                       <text x={tp.x} y={tp.y} textAnchor="middle" dominantBaseline="middle"
-                        fill={s.tokens > 0 ? "#000" : "#9ca3af"} fontSize="10" fontWeight={s.tokens > 0 ? "800" : "500"}
+                        fill={s.tokens > 0 ? "#000" : "#9ca3af"} fontSize={s.tokens >= 3 ? "10" : s.tokens === 2 ? "11" : "10"} fontWeight={s.tokens > 0 ? "800" : "500"}
                         transform={`rotate(${tp.rotate}, ${tp.x}, ${tp.y})`}>
                         {s.tokens > 0 ? (
                           <><tspan x={tp.x} dy="-6">{s.tokens}</tspan><tspan x={tp.x} dy="13" fontSize="8">TOKEN{s.tokens > 1 ? "S" : ""}</tspan></>
@@ -378,14 +378,14 @@ export default function SpinWheel({ onTokensUpdated }: { onTokensUpdated?: (newT
                         textAnchor="middle"
                         dominantBaseline="middle"
                         fill={s.tokens > 0 ? "#000" : "#9ca3af"}
-                        fontSize={s.tokens === 2 ? "11" : "10"}
+                        fontSize={s.tokens >= 3 ? "10" : s.tokens === 2 ? "11" : "10"}
                         fontWeight={s.tokens > 0 ? "800" : "500"}
                         transform={`rotate(${tp.rotate}, ${tp.x}, ${tp.y})`}
                         style={{ fontFamily: "system-ui, sans-serif" }}
                       >
                         {s.tokens > 0 ? (
                           <>
-                            <tspan x={tp.x} dy="-6">{s.tokens === 2 ? "2" : "1"}</tspan>
+                            <tspan x={tp.x} dy="-6">{s.tokens}</tspan>
                             <tspan x={tp.x} dy="13" fontSize="8">TOKEN{s.tokens > 1 ? "S" : ""}</tspan>
                           </>
                         ) : (
@@ -548,7 +548,7 @@ export default function SpinWheel({ onTokensUpdated }: { onTokensUpdated?: (newT
                 <p className="text-[#FFD700] text-4xl font-black my-3">
                   +{result.tokensWon} Token{result.tokensWon > 1 ? "s" : ""}
                 </p>
-                <p className="text-zinc-400 text-sm mb-6">Tokens have been added to your balance</p>
+                <p className="text-zinc-400 text-sm mb-6">Congratulations! {result.tokensWon} token{result.tokensWon > 1 ? "s have" : " has"} been added to your balance.</p>
                 <div
                   className="absolute inset-0 rounded-3xl pointer-events-none"
                   style={{ boxShadow: "inset 0 0 60px rgba(255,215,0,0.05)" }}
@@ -560,20 +560,22 @@ export default function SpinWheel({ onTokensUpdated }: { onTokensUpdated?: (newT
                   <RotateCcw className="w-10 h-10 text-zinc-500" />
                 </div>
                 <h3 className="text-white text-2xl font-bold mb-1">Better Luck Next Time</h3>
-                <p className="text-zinc-500 text-sm mt-2 mb-6">Come back tomorrow for another spin!</p>
+                <p className="text-zinc-400 text-sm mt-2 mb-2">You received <span className="text-zinc-300 font-semibold">0 tokens</span> this time.</p>
+                <p className="text-zinc-500 text-sm mb-6">Come back tomorrow for another chance to win!</p>
               </>
             )}
             <button
               onClick={() => setResult(null)}
-              className="w-full h-11 rounded-xl font-bold text-sm"
+              className="w-full h-11 rounded-xl font-bold text-sm transition-all hover:opacity-90"
               style={{
                 background: result.tokensWon > 0
                   ? "linear-gradient(to bottom, #FFE680, #FFD700, #B8860B)"
-                  : "rgba(255,255,255,0.08)",
-                color: result.tokensWon > 0 ? "#000" : "#fff",
+                  : "rgba(255,215,0,0.2)",
+                color: result.tokensWon > 0 ? "#000" : "#FFD700",
+                border: result.tokensWon === 0 ? "1px solid rgba(255,215,0,0.3)" : "none",
               }}
             >
-              {result.tokensWon > 0 ? "Awesome!" : "Close"}
+              {result.tokensWon > 0 ? "Awesome! 🎉" : "Try Again Tomorrow"}
             </button>
           </div>
         </div>

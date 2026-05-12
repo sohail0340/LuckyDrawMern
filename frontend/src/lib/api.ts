@@ -107,7 +107,7 @@ export const adminApi = {
   approveTransaction: (id: string | number) => request<{ ok: boolean }>("PUT", `/admin/transactions/${id}/approve`),
   rejectTransaction: (id: string | number, reason: string) => request<{ ok: boolean }>("PUT", `/admin/transactions/${id}/reject`, { reason }),
   deleteTransaction: (id: string | number) => request<{ ok: boolean }>("DELETE", `/admin/transactions/${id}`),
-  userTokens: (id: string | number) => request<AdminToken[]>("GET", `/admin/users/${id}/tokens`),
+  userTokens: (id: string | number) => request<AdminUserTokensResponse>("GET", `/admin/users/${id}/tokens`),
   deleteUserTokens: (id: string | number, options?: { status?: string; drawId?: string }) => {
     const query = new URLSearchParams();
     if (options?.status) query.set("status", options.status);
@@ -322,11 +322,21 @@ export interface AdminToken {
   drawName: string | null;
   status: string;
   createdAt: string;
+  type?: "purchased" | "spin";
+  source?: "transaction" | "daily_spin";
   transactionId?: string;
   transactionAmount?: number | null;
   transactionTokensCount?: number | null;
   transactionStatus?: string | null;
   transactionCreatedAt?: string | null;
+}
+export interface AdminUserTokensResponse {
+  totalPurchasedTokens: number;
+  totalSpinTokens: number;
+  purchasedTokensList: AdminToken[];
+  spinTokensList: AdminToken[];
+  spinHistory?: Array<{ id: string; type: string; tokensWon: number; resultIndex: number; createdAt: string }>;
+  allTokensCombined?: AdminToken[];
 }
 export interface AdminTransactionsResponse { transactions: AdminTransaction[]; total: number; page: number; limit: number; }
 export interface AdminWinner {

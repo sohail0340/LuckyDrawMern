@@ -485,24 +485,39 @@ function PaymentStep({ selectedMethod, onSelectMethod, accounts, onBack, onNext 
       <div>
         <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-500 mb-3">Select Payment Method</div>
         <div className="space-y-2.5">
-          {methods.length === 0 ? (
-            <div className="rounded-2xl border border-white/10 bg-white/5 p-5 text-sm text-zinc-400">Payment details are being updated. Please try again later.</div>
-          ) : (
-            methods.map((m) => {
-              const active = selectedMethod === m.name;
-              return (
-                <button key={m.name} type="button" onClick={() => onSelectMethod(m.name)} className={`w-full rounded-2xl border p-4 flex items-center gap-4 text-left transition-all ${active ? "border-primary bg-primary/10" : "border-white/10 bg-white/5 hover:bg-white/[0.07] hover:border-white/20"}`}>
-                  <div className="w-10 h-10 rounded-xl bg-black/30 flex items-center justify-center"><m.icon className="w-5 h-5 text-primary" /></div>
-                  <div className="flex-1 min-w-0">
-                    <div className="font-semibold text-white">{m.name}</div>
-                    <div className="text-xs text-zinc-400 truncate">{m.holder}</div>
-                    <div className="text-xs text-zinc-500 font-mono mt-1">{m.account}</div>
-                  </div>
-                  <div className={`w-5 h-5 rounded-full border flex items-center justify-center ${active ? "border-primary bg-primary text-black" : "border-white/20"}`}>{active ? <Check className="w-3 h-3" /> : null}</div>
-                </button>
-              );
-            })
-          )}
+            {methods.length === 0 ? (
+              <div className="rounded-2xl border border-white/10 bg-white/5 p-5 text-sm text-zinc-400">Payment details are being updated. Please try again later.</div>
+            ) : (
+              methods.map((m) => {
+                const active = selectedMethod === m.name;
+                return (
+                  <button
+                    key={m.name}
+                    type="button"
+                    onClick={() => onSelectMethod(m.name)}
+                    className={`w-full rounded-2xl border p-4 flex items-center gap-4 text-left transition-all ${active ? "border-primary bg-primary/10" : "border-white/10 bg-white/5 hover:bg-white/[0.07] hover:border-white/20"}`}
+                  >
+                    <div className="w-10 h-10 rounded-xl bg-black/30 flex items-center justify-center"><m.icon className="w-5 h-5 text-primary" /></div>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-semibold text-white">{m.name}</div>
+                      <div className="text-xs text-zinc-400 truncate">{m.holder}</div>
+                      <div className="flex items-center gap-2 mt-1">
+                        <div className="text-xs text-zinc-500 font-mono truncate">{m.account}</div>
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); copy(m.account, m.name); }}
+                          className="ml-2 inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-white/6 text-xs text-zinc-200 hover:bg-white/10"
+                          aria-label={`Copy ${m.name} account`}
+                        >
+                          {copied === m.name ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                        </button>
+                      </div>
+                    </div>
+                    <div className={`w-5 h-5 rounded-full border flex items-center justify-center ${active ? "border-primary bg-primary text-black" : "border-white/20"}`}>{active ? <Check className="w-3 h-3" /> : null}</div>
+                  </button>
+                );
+              })
+            )}
         </div>
       </div>
       <div className="flex gap-3">

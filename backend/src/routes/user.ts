@@ -132,6 +132,17 @@ router.get("/tokens", async (req: AuthRequest, res) => {
       return;
     }
 
+    // When the account balance is zero, do not expose stale token rows.
+    if ((user.tokens ?? 0) <= 0) {
+      res.json({
+        totalTokens: 0,
+        availableTokens: 0,
+        usedTokens: 0,
+        tokens: [],
+      });
+      return;
+    }
+
     const individualTokens = await Token.find({ userId }).sort({
       createdAt: -1,
     });
@@ -144,7 +155,8 @@ router.get("/tokens", async (req: AuthRequest, res) => {
     ).length;
 
     // If there are no individual tokens yet (legacy users), fall back to participation-based view
-    if (individualTokens.length === 0) {
+    // only when the user still has a live balance to avoid showing deleted/orphaned rows.
+    if (individualTokens.length === 0 && user.tokens > 0) {
       const participations = await DrawParticipation.find({ userId }).sort({
         joinedAt: -1,
       });

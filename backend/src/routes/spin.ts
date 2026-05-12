@@ -4,21 +4,26 @@ import {
   SpinHistory,
   Notification,
   Transaction,
+  Token,
+  Draw,
+  DrawParticipation,
 } from "../lib/db-mongoose/index.js";
 import { requireAuth, type AuthRequest } from "../lib/auth.js";
+import { randomInt } from "crypto";
 
 const router = Router();
 router.use(requireAuth as any);
 
+// 30% win chance (3 out of 8 slices), 70% "Better Luck"
 const SLICE_REWARDS: Record<number, number> = {
-  0: 1,
-  1: 0,
-  2: 2,
-  3: 0,
-  4: 1,
-  5: 0,
-  6: 1,
-  7: 0,
+  0: 0,  // Better Luck
+  1: 4,  // 4 tokens (WIN)
+  2: 0,  // Better Luck
+  3: 0,  // Better Luck
+  4: 5,  // 5 tokens (WIN)
+  5: 0,  // Better Luck
+  6: 3,  // 3 tokens (WIN)
+  7: 0,  // Better Luck
 };
 
 const PKT_OFFSET_MS = 5 * 60 * 60 * 1000; // UTC+5
@@ -121,27 +126,110 @@ router.post("/", async (req: AuthRequest, res) => {
     const resultIndex = Math.floor(Math.random() * 8);
     const tokensWon = SLICE_REWARDS[resultIndex] ?? 0;
 
-    await User.findByIdAndUpdate(req.userId!, {
-      $inc: { tokens: tokensWon },
-      lastSpinDate: today,
-    });
+    // Create real token entries if user won
+    let createdTokenIds: string[] = [];
+    let assignedDrawId: string | null = null;
+    let assignedDrawName: string | null = null;
 
+    if (tokensWon > 0) {
+      // Generate unique token numbers for this win
+      const tokenNumbers: number[] = [];
+      while (tokenNumbers.length < tokensWon) {
+        const num = randomInt(100000, 999999);
+        const existing = await Token.findOne({ tokenNumber: num });
+        if (!existing) {
+          tokenNumbers.push(num);
+        }
+      }
+
+      console.log(`Spin: Creating ${tokensWon} tokens for user ${req.userId}`, tokenNumbers);
+
+      // Try to find a draw the user has participated in
+      let participation = await DrawParticipation.findOne({ 
+        userId: req.userId! 
+      }).populate("drawId");
+
+      // If user hasn't participated in any draws, find any active draw
+      if (!participation || !participation.drawId) {
+        const activeDraw = await Draw.findOne({ status: "active" }).select("_id name");
+        if (activeDraw) {
+          assignedDrawId = activeDraw._id.toString();
+          assignedDrawName = activeDraw.name;
+          console.log(`Spin: Assigned to active draw: ${assignedDrawName}`);
+        } else {
+          console.log(`Spin: No active draws found, tokens will be unassigned`);
+        }
+      } else {
+        assignedDrawId = (participation.drawId as any)._id.toString();
+        assignedDrawName = (participation.drawId as any).name;
+        console.log(`Spin: Assigned to user's draw: ${assignedDrawName}`);
+      }
+
+      // Create token entries linked to the draw (or without draw if none available)
+      const tokenEntries = tokenNumbers.map(num => {
+        const entry: any = {
+          userId: req.userId!,
+          tokenNumber: num,
+          status: "available" as const,
+          spinWon: true,
+        };
+        if (assignedDrawId) {
+          // Keep drawId as is - Mongoose will handle the conversion
+          entry.drawId = assignedDrawId;
+        }
+        return entry;
+      });
+
+      try {
+        const createdTokens = await Token.insertMany(tokenEntries);
+        createdTokenIds = createdTokens.map(t => t._id.toString());
+        console.log(`Spin: Successfully created ${createdTokenIds.length} tokens`);
+      } catch (err) {
+        console.error(`Spin: Failed to create tokens:`, err);
+        throw err;
+      }
+    }
+
+    // Update user balance
+    const newUserRecord = await User.findByIdAndUpdate(
+      req.userId!,
+      {
+        $inc: { tokens: tokensWon },
+        lastSpinDate: new Date(),
+      },
+      { new: true }
+    );
+
+    // Record in spin history
     await SpinHistory.create({
       userId: req.userId!,
       resultIndex,
       tokensWon,
+      createdAt: new Date(),
     });
 
+    // Create notification
     if (tokensWon > 0) {
+      const drawMessage = assignedDrawName 
+        ? `They have been assigned to the "${assignedDrawName}" draw.`
+        : "Use them in any active draw!";
+      
       await Notification.create({
         userId: req.userId!,
         type: "win",
         title: `Daily Spin Reward — ${tokensWon} Token${
           tokensWon > 1 ? "s" : ""
         } Won!`,
-        message: `Congratulations! You won ${tokensWon} token${
+        message: `Congratulations! You won ${tokensWon} real token${
           tokensWon > 1 ? "s" : ""
-        } from the daily spin wheel.`,
+        } from the daily spin wheel. ${drawMessage}`,
+      });
+    } else {
+      await Notification.create({
+        userId: req.userId!,
+        type: "info",
+        title: "Better Luck Next Time!",
+        message: "You didn't win tokens today, but you can try again tomorrow!",
       });
     }
 
@@ -150,9 +238,10 @@ router.post("/", async (req: AuthRequest, res) => {
     res.json({
       resultIndex,
       tokensWon,
-      newTotal: (user.tokens ?? 0) + tokensWon,
+      newTotal: (newUserRecord?.tokens ?? 0),
       nextSpinAt: new Date(nextSpinAt).toISOString(),
       secondsUntilNextSpin: Math.ceil((nextSpinAt - Date.now()) / 1000),
+      tokenIds: createdTokenIds,
     });
   } catch (err) {
     console.error("Spin error:", err);

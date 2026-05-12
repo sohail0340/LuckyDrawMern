@@ -18,6 +18,11 @@ export interface ISettings {
   socialLinks?: Record<string, string>;
   footerContent?: string;
   whatsappNumber?: string;
+  // Draw Execution Settings
+  includeSpinTokensInDraw: boolean;
+  spinTokenWeightMultiplier: number;
+  spinTokenMinimumForDraw: number;
+  drawExecutionMode: "purchased_only" | "all_tokens" | "purchased_and_spin";
   updatedAt: Date;
 }
 
@@ -49,6 +54,15 @@ const SettingsSchema = new Schema<ISettings>(
     socialLinks: { type: Schema.Types.Mixed },
     footerContent: { type: String },
     whatsappNumber: { type: String },
+    // Draw Execution Settings
+    includeSpinTokensInDraw: { type: Boolean, default: true },
+    spinTokenWeightMultiplier: { type: Number, default: 1.0 },
+    spinTokenMinimumForDraw: { type: Number, default: 0 },
+    drawExecutionMode: {
+      type: String,
+      enum: ["purchased_only", "all_tokens", "purchased_and_spin"],
+      default: "purchased_and_spin",
+    },
     updatedAt: { type: Date, default: () => new Date() },
   },
   { timestamps: false, collection: "cld_settings" }

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { publicApi, type ApiSiteStats } from "@/lib/api";
+import { useAuth } from "@/contexts/useAuth";
 
 const DEFAULT_WHATSAPP_NUMBER =
   (import.meta.env.VITE_WHATSAPP_NUMBER as string | undefined) ?? "923001234567";
@@ -22,11 +23,15 @@ function buildWhatsAppUrl(raw: string | null | undefined): string | null {
 }
 
 export function WhatsAppSupportButton() {
+  const { user } = useAuth();
   const [siteStats, setSiteStats] = useState<ApiSiteStats | null>(null);
 
   useEffect(() => {
     publicApi.siteStats().then(setSiteStats).catch(() => {});
   }, []);
+
+  // Hide button for admin users
+  if (user?.isAdmin) return null;
 
   const href =
     buildWhatsAppUrl(siteStats?.whatsappNumber) ??
@@ -44,7 +49,7 @@ export function WhatsAppSupportButton() {
       transition={{ type: "spring", stiffness: 260, damping: 24 }}
       whileHover={{ y: -2, scale: 1.02 }}
       whileTap={{ scale: 0.98 }}
-      className="fixed bottom-3 right-3 sm:bottom-5 sm:right-5 md:bottom-6 md:right-6 z-[70] flex h-12 w-12 sm:h-14 sm:w-14 md:h-14 md:w-14 items-center justify-center rounded-full border border-white/10 bg-[#25D366] text-white shadow-[0_18px_40px_rgba(37,211,102,0.35)] transition-all duration-300 hover:shadow-[0_22px_48px_rgba(37,211,102,0.44)]"
+      className="fixed bottom-3 right-3 sm:bottom-5 sm:right-5 md:bottom-6 md:right-6 z-70 flex h-12 w-12 sm:h-14 sm:w-14 md:h-14 md:w-14 items-center justify-center rounded-full border border-white/10 bg-[#25D366] text-white shadow-[0_18px_40px_rgba(37,211,102,0.35)] transition-all duration-300 hover:shadow-[0_22px_48px_rgba(37,211,102,0.44)]"
     >
       <motion.span
         aria-hidden="true"

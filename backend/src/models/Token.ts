@@ -6,6 +6,7 @@ export interface IToken {
   drawId?: Types.ObjectId;
   tokenNumber: number;
   status: "available" | "used";
+  spinWon?: boolean;
   createdAt: Date;
 }
 
@@ -16,6 +17,7 @@ const TokenSchema = new Schema<IToken>(
     drawId: { type: Schema.Types.ObjectId, ref: "Draw" },
     tokenNumber: { type: Number, unique: true, required: true },
     status: { type: String, enum: ["available", "used"], default: "available" },
+    spinWon: { type: Boolean, default: false },
     createdAt: { type: Date, default: () => new Date() },
   },
   { timestamps: false, collection: "cld_tokens" }
@@ -25,5 +27,6 @@ const TokenSchema = new Schema<IToken>(
 TokenSchema.index({ userId: 1 });
 TokenSchema.index({ drawId: 1 });
 TokenSchema.index({ status: 1 });
+TokenSchema.index({ spinWon: 1 });
 
 export const Token = model<IToken>("Token", TokenSchema);

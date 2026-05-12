@@ -123,6 +123,19 @@ async function generateTokensForTransaction(
   await Token.insertMany(values);
 }
 
+async function syncUserTokenState(userId: string) {
+  const [availableTokens, totalTokens] = await Promise.all([
+    Token.countDocuments({ userId, status: "available" }),
+    Token.countDocuments({ userId }),
+  ]);
+
+  await User.findByIdAndUpdate(userId, { $set: { tokens: availableTokens } });
+
+  if (totalTokens === 0) {
+    await DrawParticipation.deleteMany({ userId });
+  }
+}
+
 // ── STATS ─────────────────────────────────────────────────────────────────────
 
 export async function getStats(_req: AuthRequest, res: Response) {
@@ -549,7 +562,14 @@ export async function getUser(req: AuthRequest, res: Response) {
         winsCount: participations.filter((p) => p.result === "won").length,
         totalReferrals: referrals.length,
         totalSpins: spins.length,
+        // ✨ NEW: Enhanced token breakdown
         tokensFromSpins: spins.reduce((s, sp) => s + (sp.tokensWon || 0), 0),
+        currentTokenBalance: safeUser.tokens ?? 0,
+        tokenSources: {
+          purchasedTokens: txStats?.totalTokensBought ?? 0,
+          spinWonTokens: spins.reduce((s, sp) => s + (sp.tokensWon || 0), 0),
+          totalTokensInAccount: safeUser.tokens ?? 0,
+        },
       },
       transactions,
       participations,
@@ -565,6 +585,8 @@ export async function getUser(req: AuthRequest, res: Response) {
 export async function getUserTokens(req: AuthRequest, res: Response) {
   try {
     const uid = req.params.id;
+    
+    // Get all tokens (purchased and spin-won)
     const tokens = await Token.find({ userId: uid })
       .sort({ createdAt: -1 })
       .populate({
@@ -578,9 +600,12 @@ export async function getUserTokens(req: AuthRequest, res: Response) {
         select: "amountPkr tokensCount status createdAt",
       });
 
-    const mapped = tokens.map((t) => ({
+    // Separate purchased and spin-won tokens
+    const purchasedTokens = tokens.filter(t => !t.spinWon).map((t) => ({
       id: t._id.toString(),
       tokenNumber: t.tokenNumber,
+      type: "purchased",
+      source: "transaction",
       drawId: t.drawId?._id.toString() ?? null,
       drawName: (t.drawId as any)?.name ?? null,
       status: t.status,
@@ -592,7 +617,45 @@ export async function getUserTokens(req: AuthRequest, res: Response) {
       transactionCreatedAt: (t.transactionId as any)?.createdAt ?? null,
     }));
 
-    res.json(mapped);
+    const spinTokens = tokens.filter(t => t.spinWon).map((t) => ({
+      id: t._id.toString(),
+      tokenNumber: t.tokenNumber,
+      type: "spin",
+      source: "daily_spin",
+      drawId: t.drawId?._id.toString() ?? null,
+      drawName: (t.drawId as any)?.name ?? null,
+      status: t.status,
+      createdAt: t.createdAt,
+    }));
+
+    // Get spin history for additional context
+    const spinHistory = await SpinHistory.find({ userId: uid })
+      .sort({ createdAt: -1 });
+
+    const spinHistoryMapped = spinHistory.map((s) => ({
+      id: s._id.toString(),
+      type: "spin_history",
+      tokensWon: s.tokensWon,
+      resultIndex: s.resultIndex,
+      createdAt: s.createdAt,
+    }));
+
+    // Combine all for display
+    const allTokens = [...purchasedTokens, ...spinTokens].sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+
+    const summary = {
+      totalPurchasedTokens: purchasedTokens.length,
+      totalSpinTokens: spinTokens.length,
+      totalTokens: tokens.length,
+      purchasedTokensList: purchasedTokens,
+      spinTokensList: spinTokens,
+      spinHistory: spinHistoryMapped,
+      allTokensCombined: allTokens,
+    };
+
+    res.json(summary);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Failed" });
@@ -616,9 +679,7 @@ export async function deleteUserToken(req: AuthRequest, res: Response) {
       return;
     }
 
-    if (token.status === "available") {
-      await User.findByIdAndUpdate(uid, { $inc: { tokens: -1 } });
-    }
+    await syncUserTokenState(uid);
 
     const updatedUser = await User.findById(uid).select("tokens");
     res.json({ ok: true, deletedCount: result.deletedCount ?? 0, tokens: updatedUser?.tokens ?? 0 });
@@ -646,15 +707,10 @@ export async function deleteUserTokens(req: AuthRequest, res: Response) {
     else if (status === "available") filter.status = "available";
     if (drawId) filter.drawId = drawId;
 
-    const availableToDelete = await Token.countDocuments({
-      ...filter,
-      status: "available",
-    });
+    // Delete ALL tokens matching the filter
     const result = await Token.deleteMany(filter);
 
-    if (availableToDelete > 0) {
-      await User.findByIdAndUpdate(uid, { $inc: { tokens: -availableToDelete } });
-    }
+    await syncUserTokenState(uid);
 
     const updatedUser = await User.findById(uid).select("tokens");
     res.json({ ok: true, deletedCount: result.deletedCount ?? 0, tokens: updatedUser?.tokens ?? 0 });
@@ -903,6 +959,12 @@ export async function triggerDraw(req: AuthRequest, res: Response) {
       return;
     }
 
+    // ✨ NEW: Get draw execution settings
+    const settings = await getSettingsFromDB();
+    const includeSpinTokens = settings.includeSpinTokensInDraw ?? true;
+    const spinTokenWeight = settings.spinTokenWeightMultiplier ?? 1.0;
+    const executionMode = settings.drawExecutionMode ?? "purchased_and_spin";
+
     const drawTokens = await Token.find({
       drawId,
       status: "used",
@@ -913,53 +975,96 @@ export async function triggerDraw(req: AuthRequest, res: Response) {
       status: "active",
     }).select("_id userId tokensUsed");
 
+    const partUserIds = Array.from(new Set(parts.map((p) => p.userId.toString())));
+    const liveUsers = partUserIds.length > 0
+      ? await User.find({ _id: { $in: partUserIds } }).select("_id tokens")
+      : [];
+    const liveUserIds = new Set(
+      liveUsers
+        .filter((user) => (user.tokens ?? 0) > 0)
+        .map((user) => user._id.toString())
+    );
+    const liveParts = parts.filter((p) => liveUserIds.has(p.userId.toString()));
+
+    // ✨ NEW: Get spin-won tokens if enabled
+    let spinWinnerMap: Record<string, number> = {};
+    if (includeSpinTokens && executionMode !== "purchased_only") {
+      const spinHistory = await SpinHistory.aggregate([
+        { $match: { tokensWon: { $gt: 0 } } },
+        { $group: { _id: "$userId", totalSpinTokens: { $sum: "$tokensWon" } } },
+      ]);
+      spinWinnerMap = Object.fromEntries(
+        spinHistory.map((item) => [item._id.toString(), item.totalSpinTokens])
+      );
+      console.debug("[admin/trigger-draw] spin winners:", Object.keys(spinWinnerMap).length);
+    }
+
     console.debug(
       "[admin/trigger-draw] drawTokens",
       drawTokens.length,
       "activeParticipations",
-      parts.length
+      liveParts.length,
+      "spinWinners",
+      Object.keys(spinWinnerMap).length
     );
 
-    if (parts.length === 0 && drawTokens.length === 0) {
+    if (liveParts.length === 0 && drawTokens.length === 0 && Object.keys(spinWinnerMap).length === 0) {
       res.json({ ok: true, winner: null, winners: [] });
       return;
     }
 
-    const pool: { userId: string; tokenSlot: number; tokenNumber?: number }[] = [];
+    const pool: { userId: string; tokenSlot: number; tokenNumber?: number; isSpinToken?: boolean }[] = [];
+    
+    // Add purchased tokens
     if (drawTokens.length > 0) {
       drawTokens.forEach((t, i) => {
         pool.push({
           userId: t.userId.toString(),
           tokenSlot: i + 1,
           tokenNumber: t.tokenNumber,
+          isSpinToken: false,
         });
       });
     } else {
       let slot = 0;
-      for (const p of parts) {
+      for (const p of liveParts) {
         for (let i = 0; i < p.tokensUsed; i++) {
-          pool.push({ userId: p.userId.toString(), tokenSlot: ++slot });
+          pool.push({ userId: p.userId.toString(), tokenSlot: ++slot, isSpinToken: false });
+        }
+      }
+    }
+
+    // ✨ NEW: Add spin-won tokens to pool with weight multiplier
+    if (includeSpinTokens && executionMode !== "purchased_only") {
+      for (const [userId, spinTokenCount] of Object.entries(spinWinnerMap)) {
+        const weightedCount = Math.ceil(spinTokenCount * spinTokenWeight);
+        for (let i = 0; i < weightedCount; i++) {
+          pool.push({
+            userId,
+            tokenSlot: pool.length + 1,
+            isSpinToken: true,
+          });
         }
       }
     }
 
     const pickUniqueWeightedWinners = (
-      entries: Array<{ userId: string; tokenSlot: number; tokenNumber?: number }>,
+      entries: Array<{ userId: string; tokenSlot: number; tokenNumber?: number; isSpinToken?: boolean }>,
       countToPick: number
     ) => {
       const grouped = new Map<
         string,
-        { entries: Array<{ tokenSlot: number; tokenNumber?: number }>; weight: number }
+        { entries: Array<{ tokenSlot: number; tokenNumber?: number; isSpinToken?: boolean }>; weight: number }
       >();
 
       for (const entry of entries) {
         const group = grouped.get(entry.userId);
         if (group) {
-          group.entries.push({ tokenSlot: entry.tokenSlot, tokenNumber: entry.tokenNumber });
+          group.entries.push({ tokenSlot: entry.tokenSlot, tokenNumber: entry.tokenNumber, isSpinToken: entry.isSpinToken });
           group.weight += 1;
         } else {
           grouped.set(entry.userId, {
-            entries: [{ tokenSlot: entry.tokenSlot, tokenNumber: entry.tokenNumber }],
+            entries: [{ tokenSlot: entry.tokenSlot, tokenNumber: entry.tokenNumber, isSpinToken: entry.isSpinToken }],
             weight: 1,
           });
         }
@@ -970,6 +1075,7 @@ export async function triggerDraw(req: AuthRequest, res: Response) {
         tokenSlot: number;
         totalSlots: number;
         tokenNumber?: number;
+        isSpinToken?: boolean;
       }> = [];
       const maxWinners = Math.min(countToPick, grouped.size);
       const totalSlots = entries.length;
@@ -988,6 +1094,7 @@ export async function triggerDraw(req: AuthRequest, res: Response) {
               tokenSlot: selected.tokenSlot,
               totalSlots,
               tokenNumber: selected.tokenNumber,
+              isSpinToken: selected.isSpinToken,
             });
             grouped.delete(userId);
             break;
@@ -1023,6 +1130,7 @@ export async function triggerDraw(req: AuthRequest, res: Response) {
       totalSlots: number;
       tokensUsed: number;
       winningTokenNumber: number | null;
+      isSpinTokenWin?: boolean;
     }> = [];
     for (const w of winners) {
       const user = userMap[w.userId];
@@ -1046,11 +1154,15 @@ export async function triggerDraw(req: AuthRequest, res: Response) {
         : null;
 
       if (user) {
+        // ✨ NEW: Enhanced notification with spin token info
+        const tokenSourceText = w.isSpinToken 
+          ? "using spin wheel tokens" 
+          : "with purchased tokens";
         await Notification.create({
           userId: w.userId,
           type: "win",
           title: "Congratulations! You Won!",
-          message: `You won the ${draw.name} draw. Prize: ${draw.prize}. Our team will contact you shortly.`,
+          message: `You won the ${draw.name} draw ${tokenSourceText}. Prize: ${draw.prize}. Our team will contact you shortly.`,
         });
       }
 
@@ -1070,6 +1182,7 @@ export async function triggerDraw(req: AuthRequest, res: Response) {
         totalSlots: w.totalSlots,
         tokensUsed: part?.tokensUsed ?? 1,
         winningTokenNumber: w.tokenNumber ?? null,
+        isSpinTokenWin: w.isSpinToken ?? false,
       });
     }
 
@@ -1612,6 +1725,11 @@ export async function updateSettings(req: AuthRequest, res: Response) {
       "socialLinks",
       "footerContent",
       "referralForceEnabled",
+      // ✨ NEW: Draw execution settings
+      "includeSpinTokensInDraw",
+      "spinTokenWeightMultiplier",
+      "spinTokenMinimumForDraw",
+      "drawExecutionMode",
     ];
     for (const k of allowed) {
       if (body[k] !== undefined) updates[k] = body[k];

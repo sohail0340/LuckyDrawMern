@@ -7,6 +7,8 @@ export default function Referrals() {
   const [data, setData] = useState<ApiReferralsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState<"code" | "link" | null>(null);
+  const [showShareMenu, setShowShareMenu] = useState(false);
+  const [shareUrl, setShareUrl] = useState("");
 
   useEffect(() => {
     userApi.referrals().then(setData).catch(console.error).finally(() => setLoading(false));
@@ -23,6 +25,43 @@ export default function Referrals() {
     navigator.clipboard.writeText(value).catch(() => {});
     setCopied(type);
     setTimeout(() => setCopied(null), 2000);
+  }
+
+  function handleShare(url: string) {
+    if (!url) return;
+    setShareUrl(url);
+    setShowShareMenu(true);
+  }
+
+  function shareToWhatsApp() {
+    const message = encodeURIComponent(`🎉 Join Kaptan Lucky Draw!\n\n${shareUrl}\n\nUse my referral code and earn rewards! 🎁`);
+    window.open(`https://wa.me/?text=${message}`, "_blank", "noopener,noreferrer");
+    setCopied("link");
+    setTimeout(() => setCopied(null), 2000);
+    setShowShareMenu(false);
+  }
+
+  function shareToFacebook() {
+    const url = encodeURIComponent(shareUrl);
+    window.open(`https://www.facebook.com/sharer/sharer.php?u=${url}`, "_blank", "noopener,noreferrer");
+    setCopied("link");
+    setTimeout(() => setCopied(null), 2000);
+    setShowShareMenu(false);
+  }
+
+  function shareToTwitter() {
+    const text = encodeURIComponent(`🎉 Join Kaptan Lucky Draw! Use my referral link to earn rewards! 🎁 ${shareUrl}`);
+    window.open(`https://twitter.com/intent/tweet?text=${text}`, "_blank", "noopener,noreferrer");
+    setCopied("link");
+    setTimeout(() => setCopied(null), 2000);
+    setShowShareMenu(false);
+  }
+
+  function copyShareLink() {
+    navigator.clipboard.writeText(shareUrl);
+    setCopied("link");
+    setTimeout(() => setCopied(null), 2000);
+    setShowShareMenu(false);
   }
 
   return (
@@ -72,8 +111,14 @@ export default function Referrals() {
                   <LinkIcon className="w-4 h-4 text-zinc-400" />
                   {copied === "link" ? "Copied!" : "Copy Link"}
                 </button>
-                <button className="flex items-center gap-2 px-4 py-3 rounded-xl bg-gradient-to-b from-[#FFE680] via-[#FFD700] to-[#B8860B] text-black text-sm font-bold hover:opacity-90 transition-opacity">
-                  <Share2 className="w-4 h-4" />Share
+                <button
+                  onClick={() => handleShare(refUrl)}
+                  type="button"
+                  aria-label="Share referral link"
+                  className="flex items-center gap-2 px-4 py-3 rounded-xl bg-gradient-to-b from-[#FFE680] via-[#FFD700] to-[#B8860B] text-black text-sm font-bold hover:opacity-90 active:opacity-75 transition-opacity cursor-pointer"
+                >
+                  <Share2 className="w-4 h-4" />
+                  {copied === "link" ? "Shared!" : "Share"}
                 </button>
               </div>
               <p className="text-zinc-500 text-xs leading-relaxed border-t border-white/5 pt-3">
@@ -121,6 +166,63 @@ export default function Referrals() {
           )}
         </div>
       </div>
+
+      {/* Share Menu Modal */}
+      {showShareMenu && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+          onClick={() => setShowShareMenu(false)}
+        >
+          <div
+            className="bg-[#111118] border border-white/10 rounded-2xl p-6 w-full max-w-sm shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-white font-bold text-lg mb-4">Share Your Referral Link</h3>
+            <p className="text-zinc-400 text-xs mb-6">Choose how you want to share:</p>
+            
+            <div className="grid grid-cols-2 gap-3 mb-4">
+              <button
+                onClick={shareToWhatsApp}
+                className="flex flex-col items-center gap-2 p-4 rounded-xl bg-green-600/10 border border-green-600/30 hover:bg-green-600/20 transition-colors group"
+              >
+                <div className="w-12 h-12 rounded-full bg-green-600 flex items-center justify-center text-white text-lg group-hover:scale-110 transition-transform">📱</div>
+                <span className="text-white text-xs font-semibold">WhatsApp</span>
+              </button>
+
+              <button
+                onClick={shareToFacebook}
+                className="flex flex-col items-center gap-2 p-4 rounded-xl bg-blue-600/10 border border-blue-600/30 hover:bg-blue-600/20 transition-colors group"
+              >
+                <div className="w-12 h-12 rounded-full bg-blue-600 flex items-center justify-center text-white text-lg group-hover:scale-110 transition-transform">f</div>
+                <span className="text-white text-xs font-semibold">Facebook</span>
+              </button>
+
+              <button
+                onClick={shareToTwitter}
+                className="flex flex-col items-center gap-2 p-4 rounded-xl bg-sky-500/10 border border-sky-500/30 hover:bg-sky-500/20 transition-colors group"
+              >
+                <div className="w-12 h-12 rounded-full bg-sky-500 flex items-center justify-center text-white text-lg group-hover:scale-110 transition-transform">𝕏</div>
+                <span className="text-white text-xs font-semibold">Twitter</span>
+              </button>
+
+              <button
+                onClick={copyShareLink}
+                className="flex flex-col items-center gap-2 p-4 rounded-xl bg-purple-600/10 border border-purple-600/30 hover:bg-purple-600/20 transition-colors group"
+              >
+                <div className="w-12 h-12 rounded-full bg-purple-600 flex items-center justify-center text-white text-lg group-hover:scale-110 transition-transform">📋</div>
+                <span className="text-white text-xs font-semibold">Copy Link</span>
+              </button>
+            </div>
+
+            <button
+              onClick={() => setShowShareMenu(false)}
+              className="w-full py-2 px-4 rounded-lg text-zinc-400 hover:text-white hover:bg-white/5 transition-colors font-medium"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
     </DashboardLayout>
   );
 }

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { AdminLayout } from "@/components/admin/AdminLayout";
-import { adminApi, type AdminToken, type AdminUser, type AdminUserDetail } from "@/lib/api";
+import { adminApi, type AdminToken, type AdminUser, type AdminUserDetail, type AdminUserTokensResponse } from "@/lib/api";
 import {
   AlertTriangle,
   Calendar,
@@ -158,7 +158,14 @@ function UserModal({ userId, onClose, onRefresh }: { userId: string; onClose: ()
     setLoadingTokens(true);
     await adminApi
       .userTokens(userId)
-      .then(setTokens)
+        .then((response: AdminUserTokensResponse) => {
+          // Combine both purchased and spin-won tokens
+          const allTokens = [
+            ...(response.purchasedTokensList ?? []),
+            ...(response.spinTokensList ?? []),
+          ];
+          setTokens(allTokens);
+        })
       .catch(console.error)
       .finally(() => setLoadingTokens(false));
   }, [userId]);
@@ -219,18 +226,16 @@ function UserModal({ userId, onClose, onRefresh }: { userId: string; onClose: ()
         title: "Used tokens deleted",
         description: `${result.deletedCount} used token${result.deletedCount === 1 ? "" : "s"} removed.`,
       });
-      if (result.tokens != null) {
-        setDetail((current) =>
-          current
-            ? {
-                ...current,
-                user: { ...current.user, tokens: result.tokens },
-              }
-            : current,
-        );
-      }
-      await loadTokens();
-      await refresh();
+      // Immediately refetch everything to ensure consistency
+      const [userData, tokensData] = await Promise.all([
+        adminApi.user(userId),
+        adminApi.userTokens(userId),
+      ]);
+      setDetail(userData);
+        setTokens([
+          ...(tokensData.purchasedTokensList ?? []),
+          ...(tokensData.spinTokensList ?? []),
+        ]);
       onRefresh?.();
     } catch (error) {
       toast({ title: "Delete failed", description: "Unable to delete used tokens.", variant: "destructive" });
@@ -248,18 +253,16 @@ function UserModal({ userId, onClose, onRefresh }: { userId: string; onClose: ()
         title: "All tokens deleted",
         description: `${result.deletedCount} token${result.deletedCount === 1 ? "" : "s"} permanently removed.`,
       });
-      if (result.tokens != null) {
-        setDetail((current) =>
-          current
-            ? {
-                ...current,
-                user: { ...current.user, tokens: result.tokens },
-              }
-            : current,
-        );
-      }
-      await loadTokens();
-      await refresh();
+      // Immediately refetch everything to ensure consistency
+      const [userData, tokensData] = await Promise.all([
+        adminApi.user(userId),
+        adminApi.userTokens(userId),
+      ]);
+      setDetail(userData);
+        setTokens([
+          ...(tokensData.purchasedTokensList ?? []),
+          ...(tokensData.spinTokensList ?? []),
+        ]);
       onRefresh?.();
     } catch (error) {
       toast({ title: "Delete failed", description: "Unable to delete tokens.", variant: "destructive" });
@@ -277,18 +280,16 @@ function UserModal({ userId, onClose, onRefresh }: { userId: string; onClose: ()
         title: "Token deleted",
         description: `${result.deletedCount} token permanently removed from the database.`,
       });
-      if (result.tokens != null) {
-        setDetail((current) =>
-          current
-            ? {
-                ...current,
-                user: { ...current.user, tokens: result.tokens },
-              }
-            : current,
-        );
-      }
-      await loadTokens();
-      await refresh();
+      // Immediately refetch everything to ensure consistency
+      const [userData, tokensData] = await Promise.all([
+        adminApi.user(userId),
+        adminApi.userTokens(userId),
+      ]);
+      setDetail(userData);
+        setTokens([
+          ...(tokensData.purchasedTokensList ?? []),
+          ...(tokensData.spinTokensList ?? []),
+        ]);
       onRefresh?.();
     } catch (error) {
       toast({ title: "Delete failed", description: "Unable to delete this token.", variant: "destructive" });
@@ -453,7 +454,7 @@ function UserModal({ userId, onClose, onRefresh }: { userId: string; onClose: ()
                 </div>
                 {tokens === null ? (
                   <div className="text-zinc-500 text-sm">Click the button to load this user's purchased token IDs.</div>
-                ) : tokens.length === 0 ? (
+                ) : !Array.isArray(tokens) || tokens.length === 0 ? (
                   <div className="text-zinc-500 text-sm">No tokens have been assigned to this user yet.</div>
                 ) : (
                   <div className="overflow-x-auto rounded-xl border border-white/10 bg-black/10 p-1">

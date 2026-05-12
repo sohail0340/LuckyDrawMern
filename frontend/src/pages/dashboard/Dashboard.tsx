@@ -123,7 +123,7 @@ function TokensSection({ data, loading }: { data: ApiTokensResponse | null; load
 
   if (loading) return <Spinner />;
 
-  const tokens = data?.tokens ?? [];
+  const tokens = (data?.totalTokens ?? 0) > 0 && Array.isArray(data?.tokens) ? data!.tokens : [];
   const activeCount = tokens.filter((t) => t.status === "active").length;
   const usedCount = tokens.filter((t) => t.status === "used").length;
   const draws = ["All Draws", ...Array.from(new Set(tokens.map((t) => t.draw)))];
@@ -282,7 +282,7 @@ function DrawsSection({ data, loading }: { data: ApiDrawsResponse | null; loadin
       <div className="flex bg-[#111118] border border-white/8 rounded-2xl p-1 w-fit">
         {(["active", "past"] as const).map((t) => (
           <button key={t} onClick={() => setTab(t)}
-            className={`px-5 py-2 rounded-xl text-sm font-semibold capitalize transition-all ${tab === t ? "bg-gradient-to-b from-[#FFE680] via-[#FFD700] to-[#B8860B] text-black" : "text-zinc-400 hover:text-white"}`}>
+            className={`px-5 py-2 rounded-xl text-sm font-semibold capitalize transition-all ${tab === t ? "bg-linear-to-b from-[#FFE680] via-[#FFD700] to-[#B8860B] text-black" : "text-zinc-400 hover:text-white"}`}>
             {t === "active" ? `Active (${activeDraws.length})` : `Past (${pastDraws.length})`}
           </button>
         ))}
@@ -291,7 +291,7 @@ function DrawsSection({ data, loading }: { data: ApiDrawsResponse | null; loadin
       {tab === "active" && (activeDraws.length === 0 ? (
         <Card className="overflow-hidden">
           <EmptyState icon={Trophy} title="You have not joined any draws yet" sub="Browse live draws and enter to win big prizes"
-            action={<Link href="/draws" className="inline-block px-5 py-2.5 rounded-xl bg-gradient-to-b from-[#FFE680] via-[#FFD700] to-[#B8860B] text-black font-bold text-sm hover:opacity-90 transition-opacity">Browse Live Draws</Link>} />
+            action={<Link href="/draws" className="inline-block px-5 py-2.5 rounded-xl bg-linear-to-b from-[#FFE680] via-[#FFD700] to-[#B8860B] text-black font-bold text-sm hover:opacity-90 transition-opacity">Browse Live Draws</Link>} />
         </Card>
       ) : (
         <div className="space-y-4">
@@ -395,7 +395,7 @@ function ReferralsSection({ data, loading }: { data: ApiReferralsResponse | null
         <h3 className="text-white font-semibold text-sm">Your Referral Code</h3>
         {!refCode && <div className="text-amber-400 text-sm">To get your referral link, you have to buy at least 100 tokens.</div>}
         <div className="flex items-center gap-3 flex-wrap">
-          <div className="flex-1 min-w-[160px] bg-[#0a0a0f] border border-[#FFD700]/30 rounded-xl px-4 py-3 flex items-center justify-between">
+          <div className="flex-1 min-w-40 bg-[#0a0a0f] border border-[#FFD700]/30 rounded-xl px-4 py-3 flex items-center justify-between">
             <span className="text-[#FFD700] font-bold font-mono text-lg tracking-widest">{refCode || "—"}</span>
             {refCode && (
               <button onClick={() => copy(refCode, "code")} className="flex items-center gap-1.5 text-zinc-400 hover:text-[#FFD700] transition-colors text-xs font-medium">
@@ -410,7 +410,7 @@ function ReferralsSection({ data, loading }: { data: ApiReferralsResponse | null
                 <LinkIcon className="w-4 h-4 text-zinc-400" />
                 {copied === "link" ? "Copied!" : "Copy Link"}
               </button>
-              <button className="flex items-center gap-2 px-4 py-3 rounded-xl bg-gradient-to-b from-[#FFE680] via-[#FFD700] to-[#B8860B] text-black text-sm font-bold hover:opacity-90 transition-opacity">
+              <button className="flex items-center gap-2 px-4 py-3 rounded-xl bg-linear-to-b from-[#FFE680] via-[#FFD700] to-[#B8860B] text-black text-sm font-bold hover:opacity-90 transition-opacity">
                 <Share2 className="w-4 h-4" />Share
               </button>
             </>
@@ -437,7 +437,7 @@ function ReferralsSection({ data, loading }: { data: ApiReferralsResponse | null
           <EmptyState icon={Users} title="No referrals yet" sub="Invite friends to earn 1 token on their first approved purchase" />
         ) : data.referrals.map((r, i) => (
           <div key={i} className="flex items-center gap-4 px-5 py-3.5 border-b border-white/5 last:border-b-0 hover:bg-white/3 transition-colors">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#FFE680] via-[#FFD700] to-[#B8860B] flex items-center justify-center text-black font-bold text-xs shrink-0">
+            <div className="w-8 h-8 rounded-full bg-linear-to-br from-[#FFE680] via-[#FFD700] to-[#B8860B] flex items-center justify-center text-black font-bold text-xs shrink-0">
               {r.name.charAt(0).toUpperCase()}
             </div>
             <div className="flex-1 min-w-0">
@@ -598,7 +598,7 @@ function ProfileSection() {
               <X className="w-4 h-4" />Cancel
             </button>
             <button onClick={save} disabled={saving}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gradient-to-b from-[#FFE680] via-[#FFD700] to-[#B8860B] text-black text-sm font-bold hover:opacity-90 transition-opacity">
+              className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-linear-to-b from-[#FFE680] via-[#FFD700] to-[#B8860B] text-black text-sm font-bold hover:opacity-90 transition-opacity">
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
               Save
             </button>
@@ -609,7 +609,7 @@ function ProfileSection() {
       {error && <div className="px-4 py-2.5 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm">{error}</div>}
 
       <Card className="p-6 flex items-center gap-5">
-        <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#FFE680] via-[#FFD700] to-[#B8860B] flex items-center justify-center text-black font-bold text-2xl shrink-0">
+        <div className="w-16 h-16 rounded-full bg-linear-to-br from-[#FFE680] via-[#FFD700] to-[#B8860B] flex items-center justify-center text-black font-bold text-2xl shrink-0">
           {initials}
         </div>
         <div>
@@ -661,7 +661,7 @@ function ProfileSection() {
 
 /* ───────────────────── MAIN DASHBOARD ───────────────────── */
 export default function Dashboard() {
-  const { user, logout, loading: authLoading } = useAuth();
+  const { user, logout, loading: authLoading, refreshUser } = useAuth();
   const [, navigate] = useLocation();
 
   const [activeSection, setActiveSection] = useState<Section>(() => {
@@ -697,18 +697,48 @@ export default function Dashboard() {
 
   const handleSpinTokenUpdate = useCallback((newTotal: number) => {
     setStats((prev) => prev ? { ...prev, totalTokens: newTotal } : prev);
-    setTokensData((prev) => prev ? { ...prev, totalTokens: newTotal } : prev);
+    // Refetch tokens to show newly won tokens
+    userApi.tokens()
+      .then((t) => {
+        setTokensData(t);
+      })
+      .catch((err) => console.error("Failed to refetch tokens:", err));
+    // Ensure global auth user stays in sync with updated token totals
+    try {
+      refreshUser?.();
+    } catch (err) {
+      console.debug("refreshUser failed:", err);
+    }
   }, []);
 
   useEffect(() => {
     if (!user) return;
-    userApi.stats().then(setStats).catch(console.error).finally(() => setStatsLoading(false));
-    userApi.tokens().then(setTokensData).catch(console.error).finally(() => setTokensLoading(false));
+    userApi.stats()
+      .then((s) => {
+        setStats(s);
+        // If server reports a different total than our auth user, refresh the auth user to stay in sync
+        if (typeof s.totalTokens === "number" && s.totalTokens !== user.tokens) {
+          refreshUser?.();
+        }
+      })
+      .catch(console.error)
+      .finally(() => setStatsLoading(false));
+
+    userApi.tokens()
+      .then((t) => {
+        setTokensData(t);
+        if (typeof t.totalTokens === "number" && t.totalTokens !== user.tokens) {
+          refreshUser?.();
+        }
+      })
+      .catch(console.error)
+      .finally(() => setTokensLoading(false));
+
     userApi.transactions().then(setTxns).catch(console.error).finally(() => setTxnsLoading(false));
     userApi.draws().then(setDrawsData).catch(console.error).finally(() => setDrawsLoading(false));
     userApi.referrals().then(setRefsData).catch(console.error).finally(() => setRefsLoading(false));
     userApi.notifications().then(setNotifs).catch(console.error).finally(() => setNotifsLoading(false));
-  }, [user]);
+  }, [user, refreshUser]);
 
   if (authLoading || !user) {
     return (
@@ -728,7 +758,7 @@ export default function Dashboard() {
       <header className="sticky top-0 z-50 bg-[#0d0d15]/90 backdrop-blur-md border-b border-white/8">
         <div className="container mx-auto px-4 md:px-6 h-14 flex items-center gap-4">
           <Link href="/" className="flex items-center gap-2 shrink-0">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#FFE680] via-[#FFD700] to-[#B8860B] flex items-center justify-center p-[2px]">
+            <div className="w-8 h-8 rounded-full bg-linear-to-br from-[#FFE680] via-[#FFD700] to-[#B8860B] flex items-center justify-center p-0.5">
               <div className="w-full h-full rounded-full bg-[#111118] flex items-center justify-center">
                 <Crown className="w-4 h-4 text-[#FFD700]" />
               </div>
@@ -754,11 +784,11 @@ export default function Dashboard() {
 
           {/* User pill */}
           <div className="flex items-center gap-2 bg-[#111118] border border-white/8 rounded-xl px-3 py-1.5">
-            <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[#FFE680] via-[#FFD700] to-[#B8860B] flex items-center justify-center text-black font-bold text-xs shrink-0">
+            <div className="w-7 h-7 rounded-full bg-linear-to-br from-[#FFE680] via-[#FFD700] to-[#B8860B] flex items-center justify-center text-black font-bold text-xs shrink-0">
               {initials}
             </div>
             <div className="hidden sm:flex flex-col min-w-0">
-              <span className="text-white text-xs font-semibold truncate max-w-[120px]">{displayName}</span>
+              <span className="text-white text-xs font-semibold truncate max-w-30">{displayName}</span>
               <span className="text-[#FFD700] text-[10px] font-mono">{user.tokens} tokens</span>
             </div>
           </div>

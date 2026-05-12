@@ -16,7 +16,7 @@ export default function Tokens() {
 
   if (loading) return <DashboardLayout><div className="flex items-center justify-center h-64"><Loader2 className="w-8 h-8 text-[#FFD700] animate-spin" /></div></DashboardLayout>;
 
-  const tokens = data?.tokens ?? [];
+  const tokens = (data?.totalTokens ?? 0) > 0 && Array.isArray(data?.tokens) ? data!.tokens : [];
   const activeCount = tokens.filter((t) => t.status === "active").length;
   const usedCount = tokens.filter((t) => t.status === "used").length;
   const draws = ["All Draws", ...Array.from(new Set(tokens.map((t) => t.draw)))];
@@ -54,7 +54,7 @@ export default function Tokens() {
             <Ticket className="w-12 h-12 text-zinc-700 mx-auto mb-4" />
             <p className="text-white font-semibold text-base">You don't have any tokens yet</p>
             <p className="text-zinc-500 text-sm mt-1 mb-5">Purchase tokens to get started</p>
-            <Link href="/draws" className="inline-block px-5 py-2.5 rounded-xl bg-gradient-to-b from-[#FFE680] via-[#FFD700] to-[#B8860B] text-black font-bold text-sm hover:opacity-90 transition-opacity">
+            <Link href="/draws" className="inline-block px-5 py-2.5 rounded-xl bg-linear-to-b from-[#FFE680] via-[#FFD700] to-[#B8860B] text-black font-bold text-sm hover:opacity-90 transition-opacity">
               Browse Live Draws
             </Link>
           </div>
@@ -87,7 +87,7 @@ export default function Tokens() {
               ) : (
                 filtered.map((t) => (
                   <div key={t.id} className="grid grid-cols-[auto_1fr_auto_auto] gap-4 px-5 py-4 border-b border-white/5 last:border-b-0 hover:bg-white/3 transition-colors items-center">
-                    <div className="flex items-center gap-1.5 min-w-[80px]">
+                    <div className="flex items-center gap-1.5 min-w-20">
                       <Hash className="w-3 h-3 text-[#FFD700]/60 shrink-0" />
                       <span className="text-[#FFD700] font-mono text-sm font-bold">
                         {t.tokenNumber ?? t.id}
