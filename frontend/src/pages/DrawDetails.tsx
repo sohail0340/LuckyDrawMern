@@ -590,7 +590,7 @@ function ProofStep({ name, setName, phone, setPhone, address, setAddress, txnId,
   );
 }
 
-function PendingStep({ orderId, name, phone, txnId, paymentMethod, qty, total, screenshot, transactionId }: { orderId: string; name: string; phone: string; txnId: string; paymentMethod: string; qty: number; total: number; screenshot: { name: string; dataUrl: string } | null; transactionId: number | null; }) {
+function PendingStep({ orderId, name, phone, txnId, paymentMethod, qty, total, screenshot, transactionId }: { orderId: string; name: string; phone: string; txnId: string; paymentMethod: string; qty: number; total: number; screenshot: { name: string; dataUrl: string } | null; transactionId: string | number | null; }) {
   return (
     <div className="bg-gradient-to-br from-card to-zinc-950 border border-white/10 rounded-3xl p-6 md:p-8 text-center space-y-4">
       <div className="w-16 h-16 mx-auto rounded-full bg-primary/10 border border-primary/30 flex items-center justify-center"><Hourglass className="w-8 h-8 text-primary" /></div>
@@ -673,6 +673,6 @@ function PreviousWinners() {
   return <section className="container mx-auto px-4 md:px-6 py-10 text-zinc-400">Previous winners</section>;
 }
 
-function OtherActiveDraws({ currentId }: { currentId: number; }) {
+function OtherActiveDraws({ currentId }: { currentId: string | number; }) {
   return <section className="container mx-auto px-4 md:px-6 py-10 text-zinc-400">Other active draws</section>;
 }
