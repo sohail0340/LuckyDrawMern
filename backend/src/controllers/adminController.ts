@@ -664,8 +664,8 @@ export async function getUserTokens(req: AuthRequest, res: Response) {
 
 export async function deleteUserToken(req: AuthRequest, res: Response) {
   try {
-    const uid = req.params.id;
-    const tokenId = req.params.tokenId;
+    const uid = String(req.params.id || "").trim();
+    const tokenId = String(req.params.tokenId || "").trim();
 
     const token = await Token.findOne({ _id: tokenId, userId: uid }).select("status");
     if (!token) {
@@ -691,7 +691,7 @@ export async function deleteUserToken(req: AuthRequest, res: Response) {
 
 export async function deleteUserTokens(req: AuthRequest, res: Response) {
   try {
-    const uid = req.params.id;
+    const uid = String(req.params.id || "").trim();
     const payload = req.body as { status?: string };
     const queryStatus = typeof req.query.status === "string" ? req.query.status : undefined;
     const drawId = typeof req.query.drawId === "string" ? req.query.drawId : undefined;
