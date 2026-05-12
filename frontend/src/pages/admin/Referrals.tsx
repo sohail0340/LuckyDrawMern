@@ -11,21 +11,25 @@ function timeAgo(iso: string) {
 export default function AdminReferrals() {
   const [data, setData] = useState<AdminReferralsResponse | null>(null);
   const [loading, setLoading] = useState(true);
-  const [acting, setActing] = useState<number | null>(null);
+  const [acting, setActing] = useState<string | null>(null);
 
   const load = () => { adminApi.referrals().then(setData).catch(console.error).finally(() => setLoading(false)); };
   useEffect(() => { load(); }, []);
 
-  async function grant(id: number) {
+  async function grant(id: string) {
     setActing(id);
-    await adminApi.grantReferral(id).catch(console.error);
+    const referralId = Number(id);
+    if (!Number.isFinite(referralId)) return;
+    await adminApi.grantReferral(referralId).catch(console.error);
     setActing(null); load();
   }
 
-  async function revoke(id: number) {
+  async function revoke(id: string) {
     if (!confirm("Revoke this referral reward?")) return;
     setActing(id);
-    await adminApi.revokeReferral(id).catch(console.error);
+    const referralId = Number(id);
+    if (!Number.isFinite(referralId)) return;
+    await adminApi.revokeReferral(referralId).catch(console.error);
     setActing(null); load();
   }
 

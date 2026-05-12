@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { AdminLayout } from "@/components/admin/AdminLayout";
-import { adminApi, type AdminDraw, type AdminParticipant } from "@/lib/api";
+import { adminApi, type AdminDraw, type AdminParticipant, type AdminWinnerInfoWithToken } from "@/lib/api";
 import { fixImageUrl } from "@/lib/imageUrl";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -603,7 +603,7 @@ function PickWinnerModal({ draw, onClose, onComplete }: { draw: AdminDraw; onClo
   const [phase, setPhase] = useState<Phase>("setup");
   const [winnerCount, setWinnerCount] = useState(1);
   const [allNames, setAllNames] = useState<string[]>([]);
-  const [winners, setWinners] = useState<Array<{ id?: number; name: string | null; phone: string | null; city: string | null; tokensUsed: number; tokenSlot: number; totalSlots: number }>>([]);
+  const [winners, setWinners] = useState<AdminWinnerInfoWithToken[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [displayName, setDisplayName] = useState("");
   const [progress, setProgress] = useState(0);
@@ -624,7 +624,17 @@ function PickWinnerModal({ draw, onClose, onComplete }: { draw: AdminDraw; onClo
       const names = [...new Set(participantList.map(p => p.userName || p.userPhone || "Anonymous"))].filter(Boolean);
       namesRef.current = names.length > 0 ? names : ["Participant"];
       setAllNames(namesRef.current);
-      const ws = result.winners ?? (result.winner ? [{ ...result.winner, tokenSlot: 1, totalSlots: 1 }] : []);
+      const ws = result.winners ?? (result.winner ? [{
+        tokenId: String(result.winner.userId),
+        id: String(result.winner.userId),
+        name: result.winner.userName ?? null,
+        phone: null,
+        city: result.winner.city,
+        tokensUsed: result.winner.tokensWon,
+        tokenSlot: 1,
+        totalSlots: 1,
+        winningTokenNumber: null,
+      }] : []);
       setWinners(ws);
       selectionIdRef.current = `${draw.id}-${ws.map(w => w.id ?? "X").join("-")}-${Date.now().toString(36).toUpperCase()}`;
       phaseRef.current = "animating";

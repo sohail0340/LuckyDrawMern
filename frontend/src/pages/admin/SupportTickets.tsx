@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { AdminLayout } from "@/components/admin/AdminLayout";
-import { adminApi, type AdminContactMessage } from "@/lib/api";
+import { adminApi, type AdminContactMessage, type AdminContactResponse } from "@/lib/api";
 import {
   MessageSquare, Mail, Phone, Clock, CheckCircle2, XCircle,
   RefreshCw, Trash2, ChevronDown, Eye, ExternalLink, AlertCircle,
@@ -33,7 +33,7 @@ const SUBJECT_LABELS: Record<string, string> = {
 };
 
 export default function AdminSupportTickets() {
-  const [data, setData] = useState<{ messages: AdminContactMessage[]; total: number; openCount: number } | null>(null);
+  const [data, setData] = useState<AdminContactResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("all");
   const [selected, setSelected] = useState<AdminContactMessage | null>(null);

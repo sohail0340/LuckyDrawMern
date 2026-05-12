@@ -468,10 +468,12 @@ function NotificationsSection({ notifs: initial, loading, onNotifUpdate }: { not
   const unread = notifs.filter((n) => !n.read).length;
   const filtered = filter === "all" ? notifs : notifs.filter((n) => n.type === filter);
 
-  async function markRead(id: number) {
-    await userApi.markNotificationRead(id).catch(() => null);
+  async function markRead(id: string) {
+    const notificationId = Number(id);
+    if (!Number.isFinite(notificationId)) return;
+    await userApi.markNotificationRead(notificationId).catch(() => null);
     setNotifs((prev) => {
-      const updated = prev.map((n) => n.id === id ? { ...n, read: true } : n);
+      const updated = prev.map((n) => String(n.id) === id ? { ...n, read: true } : n);
       onNotifUpdate?.(updated);
       return updated;
     });
@@ -524,7 +526,7 @@ function NotificationsSection({ notifs: initial, loading, onNotifUpdate }: { not
         ) : filtered.map((n) => {
           const cfg = NOTIF_TYPE[n.type] ?? NOTIF_TYPE.system;
           return (
-            <div key={n.id} onClick={() => markRead(n.id)}
+            <div key={n.id} onClick={() => markRead(String(n.id))}
               className={`flex items-start gap-4 px-5 py-4 border-b border-white/5 last:border-b-0 transition-colors cursor-pointer ${!n.read ? "bg-[#FFD700]/3 hover:bg-[#FFD700]/5" : "hover:bg-white/3"}`}>
               <div className={`w-9 h-9 rounded-xl ${cfg.bg} flex items-center justify-center shrink-0 ${n.read ? "opacity-60" : ""}`}>
                 <cfg.icon className={`w-4 h-4 ${cfg.color}`} />

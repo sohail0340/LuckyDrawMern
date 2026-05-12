@@ -35,9 +35,11 @@ export default function Notifications() {
   const unread = notifs.filter((n) => !n.read).length;
   const filtered = filter === "all" ? notifs : notifs.filter((n) => n.type === filter);
 
-  async function markRead(id: number) {
-    await userApi.markNotificationRead(id).catch(() => null);
-    setNotifs((prev) => prev.map((n) => n.id === id ? { ...n, read: true } : n));
+  async function markRead(id: string) {
+    const notificationId = Number(id);
+    if (!Number.isFinite(notificationId)) return;
+    await userApi.markNotificationRead(notificationId).catch(() => null);
+    setNotifs((prev) => prev.map((n) => String(n.id) === id ? { ...n, read: true } : n));
   }
 
   async function markAllRead() {
@@ -89,7 +91,7 @@ export default function Notifications() {
             </div>
           ) : (
             filtered.map((n) => (
-              <div key={n.id} onClick={() => markRead(n.id)}
+              <div key={n.id} onClick={() => markRead(String(n.id))}
                 className={`flex items-start gap-4 px-5 py-4 border-b border-white/5 last:border-b-0 transition-colors cursor-pointer ${!n.read ? "bg-[#FFD700]/3 hover:bg-[#FFD700]/5" : "hover:bg-white/3"}`}>
                 <NotifIcon type={n.type} read={n.read} />
                 <div className="flex-1 min-w-0">

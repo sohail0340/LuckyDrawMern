@@ -55,9 +55,9 @@ function WinnerDrawer({ winner, onClose, onUpdated }: { winner: AdminWinner; onC
         displayDateLabel: form.displayDateLabel.trim() || null,
         displayImageUrl: form.displayImageUrl.trim() || null,
         displayAvatarUrl: form.displayAvatarUrl.trim() || null,
-        prizeDeliveryStatus: form.prizeDeliveryStatus as any,
         notes: form.notes.trim() || null,
       });
+      await adminApi.updateDelivery(winner.id, form.prizeDeliveryStatus, form.notes.trim() || undefined);
       onUpdated();
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to save winner";
